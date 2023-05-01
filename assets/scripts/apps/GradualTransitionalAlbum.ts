@@ -19,6 +19,7 @@ export class GradualTransitionalAlbum extends Component {
             const spriteFrame:SpriteFrame = this.imageDatas[0];
             this.imageAlbum.spriteFrame = spriteFrame
             this.imageDatas.push(this.imageDatas.shift())
+            
         }
     }
 

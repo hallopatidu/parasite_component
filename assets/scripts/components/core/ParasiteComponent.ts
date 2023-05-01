@@ -40,7 +40,8 @@ export function override(target: Component, propertyKey: string, descriptor: Pro
         return;
     }     
     if(DEV){
-        if(!(js.getSuper(target.constructor) == ParasiteComponent)){
+        // if(!(js.getSuper(target.constructor) == ParasiteComponent)){
+        if(!js.isChildClassOf(target.constructor, ParasiteComponent)){
             error('You should extending ParasiteComponent Class for this class to use @override');
         }
     }
@@ -56,7 +57,7 @@ export function override(target: Component, propertyKey: string, descriptor: Pro
         listOfOverrideMethods.add(propertyKey);
         hasNewParasiteMethod = true
     }
-    if(hasNewParasiteClass && hasNewParasiteMethod){
+    if(hasNewParasiteClass && hasNewParasiteMethod ){
         target['onLoad'] = ((previousOnLoad:Function)=> function(){
             if(!this.enabled) return;
             if(!this.super){
@@ -140,7 +141,7 @@ export function override(target: Component, propertyKey: string, descriptor: Pro
             return previousOnLoad ? previousOnLoad.call(this) : null;
         })(target['onLoad']);
         // 
-        target['onDestroy'] = ((previousDestroy:Function)=>function(){
+        target['onDestroy'] = ((previousDestroy:Function)=>function(){            
             previousDestroy ? previousDestroy.call(this) : null            
             this._super = null;
             this._root = null;               
