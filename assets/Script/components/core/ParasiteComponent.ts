@@ -81,16 +81,18 @@ export function override(target: cc.Component, propertyKey: string, descriptor: 
                                 const originMethodName:string = '__$super'+ methodName + '__';
                                 const originSuperMethod:Function = this[originMethodName];
                                 if(!originSuperMethod){
-                                    const descriptor:PropertyDescriptor = cc.js.getPropertyDescriptor(this._root, methodName);
-                                    if(descriptor.get || descriptor.set){
-                                        const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this, methodName);
-                                        cc.js.getset(this, originMethodName, descriptor.get.bind(this._root), descriptor.set.bind(this._root), descriptor.enumerable, descriptor.configurable);                                        
-                                        cc.js.getset(this._root, methodName, thisDesc.get ? thisDesc.get.bind(this) : descriptor.get.bind(this._root) , thisDesc.set ? thisDesc.set.bind(this):descriptor.set.bind(this._root), thisDesc.enumerable, thisDesc.configurable)
-                                    }else{
-                                        // Save previous inheritance method with name ['__$super'+ methodName + '__']                                    
-                                        this[originMethodName] = getSuperMethod(this, methodName);
-                                        // Rewrite the origin super root method by this[methodName].
-                                        this._root[methodName] = this[methodName].bind(this);
+                                    const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this, methodName);                                    
+                                    if(thisDesc){
+                                        const descriptor:PropertyDescriptor = cc.js.getPropertyDescriptor(this._root, methodName);
+                                        if(descriptor.get || descriptor.set){                                        
+                                            cc.js.getset(this, originMethodName, descriptor.get.bind(this._root), descriptor.set.bind(this._root), descriptor.enumerable, descriptor.configurable);                                        
+                                            cc.js.getset(this._root, methodName, thisDesc.get ? thisDesc.get.bind(this) : descriptor.get.bind(this._root) , thisDesc.set ? thisDesc.set.bind(this):descriptor.set.bind(this._root), thisDesc.enumerable, thisDesc.configurable)
+                                        }else{
+                                            // Save previous inheritance method with name ['__$super'+ methodName + '__']                                    
+                                            this[originMethodName] = getSuperMethod(this, methodName);
+                                            // Rewrite the origin super root method by this[methodName].
+                                            this._root[methodName] = this[methodName].bind(this);
+                                        }
                                     }
                                 }
                             })
