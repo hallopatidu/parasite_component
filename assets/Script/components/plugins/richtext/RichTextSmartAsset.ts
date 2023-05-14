@@ -1,10 +1,4 @@
-// Learn TypeScript:
-//  - https://docs.cocos.com/creator/2.4/manual/en/scripting/typescript.html
-// Learn Attribute:
-//  - https://docs.cocos.com/creator/2.4/manual/en/scripting/reference/attributes.html
-// Learn life-cycle callbacks:
-//  - https://docs.cocos.com/creator/2.4/manual/en/scripting/life-cycle-callbacks.html
-
+// Author by dzung@gamifystudios.co
 import ParasiteComponent, { override } from "../../core/ParasiteComponent";
 
 const {ccclass, property, executeInEditMode} = cc._decorator;
@@ -13,10 +7,10 @@ const EMBED:string = '$embed';
 const SEPERATE:string = '::';
 const DEFAULT_BUNDLES:string[] = ['resources'];
 /**
- * Support searching and finding spriteframe from embed assets or assets located inside the specify bundle.
+ * Support searching and finding spriteframe from embed assets or assets located inside the specify bundle.  
  * Note:
  * - When the 'imageAtlas' attribute of RichText component is setted, RichTextSmartAsset just find only spriteframe inside this atlas.
- * 
+ * - DO NOT support show off images inside RichText Component on Editor. This feature will be coded in the furture.
  */
 @ccclass
 @executeInEditMode
@@ -30,7 +24,7 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
     @override
     _addRichTextImageElement (richTextElement:any) {
         if(this.enabled){
-            // These line just prevent warning from RichText Componet when we are in the assett loading time.
+            // These line just prevent the warning from RichText Componet when we are in the asset loading proccess.
             let spriteFramePath:string = richTextElement.style.src;
             if(spriteFramePath){
                 let hasSpriteFrame:boolean = this.hasSpriteFrameFromCache(spriteFramePath);
@@ -46,7 +40,7 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
     }
 
     /**
-     * Runtime override _needsUpdateTextLayout method of native RichText Component.
+     * At Runtime, this method override _needsUpdateTextLayout method of native RichText Component.
      * @param newTextArray 
      * @returns 
      */
@@ -56,7 +50,8 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
     }
 
     /**
-     * 
+     * In the case, imageAtlas attribute of RichText Component is not setted, 
+     * return a fake SpriteAtlas Object which has the 'getSpriteFrame' method modified for the spriteframe lazy loading.
      */
     @override
     get imageAtlas():cc.SpriteAtlas{        
@@ -169,7 +164,7 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
     // -------------------------
 
     /**
-     * In the case, the spriteFrame is not found in embed assets, we find it inside the bundle which has name in 'this.bundleNames' attributes.
+     * In the case, the spriteFrame is not found in embed assets, we find it inside the bundle which has name is listed in 'this.bundleNames' attributes.
      * 
      * @param bundleNames 
      */
@@ -185,6 +180,7 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
                         if(!err && bundle){
                             bundle.load(spriteFramePath, cc.SpriteFrame, (err:Error, asset:cc.SpriteFrame)=>{
                                 if(!err && asset){
+                                    // Recall 'importSpriteFrameFromBundles' method for updating and refreshing RichText Component.
                                     this.importSpriteFrameFromBundles(spriteFramePath, bundleNames, bundleName);
                                     return null;                                                         
                                 }
@@ -192,6 +188,7 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
                                 this.importSpriteFrameFromBundles(spriteFramePath, bundleNames);                    
                             })
                         }else{
+                            // Continue finding other bundles.
                             this.importSpriteFrameFromBundles(spriteFramePath, bundleNames);
                         }
                     })
@@ -200,14 +197,14 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
                 // 
                 const spriteFrame:cc.SpriteFrame = bundle.get(spriteFramePath, cc.SpriteFrame) as cc.SpriteFrame;                
                 if(spriteFrame){
-                    // There is the spriteFrame inside assets bundle.
+                    // In the case, There is the spriteFrame inside this bundle.
                     const assetInfo:any = bundle.getInfoWithPath(spriteFramePath, cc.SpriteFrame);
                     if(!this.cachedNames.has(spriteFramePath) ){
                         this.cachedNames.set(spriteFramePath, bundle.name + SEPERATE + assetInfo.uuid);
                     }
                     return bundle.name + SEPERATE + assetInfo.uuid
                 }else{
-                    // In the case, bundle is loaded but the spriteFrame is not loaded.
+                    // In the case, bundle is loaded but the spriteFrame asset is not loaded.
                     bundle.load(spriteFramePath, cc.SpriteFrame, (err:Error, asset:cc.Asset)=>{
                         if(!err && asset){
                             const key:string = this.importSpriteFrameFromBundles(spriteFramePath, bundleNames, bundleName);
@@ -223,12 +220,6 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
         }
     }
 
-    // ----------------------------------------
-
-    protected onDestroy(): void {
-        
-
-    }
-
+    
     
 }
