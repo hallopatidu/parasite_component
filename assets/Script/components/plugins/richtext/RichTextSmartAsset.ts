@@ -1,4 +1,4 @@
-// Author by dzung@gamifystudios.co
+// Author by hallopatidu@gmail.com
 import ParasiteComponent, { override } from "../../core/ParasiteComponent";
 
 const {ccclass, property, executeInEditMode} = cc._decorator;
