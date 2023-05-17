@@ -124,8 +124,8 @@ export default class RichTextTemplateConfig extends ParasiteComponent<cc.RichTex
                 spriteNode.color = patternNode.color;
                 spriteNode.opacity = patternNode.opacity;
                 spriteNode.skewX = patternNode.skewX;
-                spriteNode.skewY = patternNode.skewY;                
-                spriteNode.setAnchorPoint(new cc.Vec2(spriteNode.getAnchorPoint().x, patternNode.getAnchorPoint().y))
+                spriteNode.skewY = patternNode.skewY;
+                spriteNode.setAnchorPoint(new cc.Vec2(spriteNode.getAnchorPoint().x, patternNode.getAnchorPoint().y));
                 // 
                 let quat:cc.Quat = new cc.Quat();
                 patternNode.getRotation(quat);
