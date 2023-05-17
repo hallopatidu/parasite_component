@@ -93,7 +93,7 @@ export function override(target: cc.Component, propertyKey: string, descriptor: 
                                             // Rewrite the origin super root method by this[methodName].
                                             this._root[methodName] = this[methodName].bind(this);
                                         }else{
-                                            Object.defineProperty(this._root, originMethodName, descriptor);
+                                            Object.defineProperty(this, originMethodName, descriptor);
                                             Object.defineProperty(this._root, methodName, thisDesc);
                                         }
                                     }
