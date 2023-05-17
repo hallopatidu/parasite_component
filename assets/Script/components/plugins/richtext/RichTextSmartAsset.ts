@@ -55,20 +55,21 @@ export default class RichTextSmartAsset extends ParasiteComponent<cc.RichText> {
      */
     @override
     get imageAtlas():cc.SpriteAtlas{        
-        return this._imageAtlas || {getSpriteFrame: this.getOrLoadSpriteFrame.bind(this)} as cc.SpriteAtlas;
+        // return this.super ?  (this.super['imageAtlas'] || {getSpriteFrame: this.getOrLoadSpriteFrame.bind(this)} as cc.SpriteAtlas) : null;
+        return this['_imageAtlas'] || {getSpriteFrame: this.getOrLoadSpriteFrame.bind(this)} as cc.SpriteAtlas;
     }
     
     set imageAtlas(value:cc.SpriteAtlas){
-        this._imageAtlas = value;
+        this['_imageAtlas'] = value;
     }
     
     //  -------------------
 
-    @property({
-        serializable:true,
-        visible:false
-    })
-    _imageAtlas:cc.SpriteAtlas = null;
+    // @property({
+    //     serializable:true,
+    //     visible:false
+    // })
+    // _imageAtlas:cc.SpriteAtlas = null;
     
     @property({
         type:[cc.String],

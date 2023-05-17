@@ -50,10 +50,12 @@ export default class RichTextOutline extends ParasiteComponent<cc.RichText> {
      * 
      */
     protected applyAllTextAttributes(handler:Function){
-        for (let i = 0; i < this.super['_labelSegments'].length; ++i) {
-            const node:cc.Node = this.super['_labelSegments'][i] as cc.Node;
-            if(node && node.isValid){
-                handler(node)
+        if(this.super['_labelSegments']){
+            for (let i = 0; i < this.super['_labelSegments'].length; ++i) {
+                const node:cc.Node = this.super['_labelSegments'][i] as cc.Node;
+                if(node && node.isValid){
+                    handler(node)
+                }
             }
         }
     }
