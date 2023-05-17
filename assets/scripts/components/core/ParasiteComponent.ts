@@ -87,11 +87,14 @@ export function override(target: Component, propertyKey: string, descriptor: Pro
                                         if(descriptor.get || descriptor.set){
                                             js.getset(this, originMethodName, descriptor.get.bind(this._root), descriptor.set.bind(this._root), descriptor.enumerable, descriptor.configurable);                                        
                                             js.getset(this._root, methodName, thisDesc.get ? thisDesc.get.bind(this) : descriptor.get.bind(this._root) , thisDesc.set ? thisDesc.set.bind(this):descriptor.set.bind(this._root), thisDesc.enumerable, thisDesc.configurable)
-                                        }else{
+                                        }else if(typeof descriptor.value == 'function'){
                                             // Save previous inheritance method with name ['__super'+ methodName + '__']                                    
                                             this[originMethodName] = getSuperMethod(this, methodName);
                                             // Rewrite the origin super root method by this[methodName].
                                             this._root[methodName] = this[methodName].bind(this);
+                                        }else {
+                                            Object.defineProperty(this, originMethodName, descriptor);
+                                            Object.defineProperty(this._root, methodName, thisDesc);
                                         }
                                     }
                                 }
@@ -144,9 +147,14 @@ export function override(target: Component, propertyKey: string, descriptor: Pro
         })(target['onLoad']);
         // 
         target['onDestroy'] = ((previousDestroy:Function)=>function(){            
-            previousDestroy ? previousDestroy.call(this) : null            
+            previousDestroy ? previousDestroy.call(this) : null;
+            listOfOverrideMethods.forEach((methodName:string)=>{
+                const originMethodName:string = '__$super'+ methodName + '__';
+                delete this[originMethodName];
+            }) 
             this._super = null;
-            this._root = null;               
+            this._root = null;
+            this.super = null;
         })(target['onDestroy'])
     }
 
