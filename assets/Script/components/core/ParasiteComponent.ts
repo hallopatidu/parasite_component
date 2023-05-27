@@ -29,11 +29,11 @@ function getSuperMethod(target:any, methodName:string):Function{
 }
 
 /**
-     * Can add override method for this method.
-     * @param target 
-     * @param propertyKey 
-     * @param descriptor 
-     */
+ * Can add override method for this method.
+ * @param target 
+ * @param propertyKey 
+ * @param descriptor 
+ */
 export function override(target: cc.Component, propertyKey: string, descriptor: PropertyDescriptor){
     if(propertyKey === 'onLoad') {
         cc.error('Do not support overriding ' + propertyKey + ' method');
@@ -83,32 +83,45 @@ export function override(target: cc.Component, propertyKey: string, descriptor: 
                                 if(!originSuperMethod){
                                     const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this, methodName);                                    
                                     if(thisDesc){
-                                        const descriptor:PropertyDescriptor = cc.js.getPropertyDescriptor(this._root, methodName);
-                                        if(descriptor.get || descriptor.set){                                        
-                                            cc.js.getset(this, originMethodName, descriptor.get.bind(this._root), descriptor.set.bind(this._root), descriptor.enumerable, descriptor.configurable);                                        
-                                            cc.js.getset(this._root, methodName, thisDesc.get ? thisDesc.get.bind(this) : descriptor.get.bind(this._root) , thisDesc.set ? thisDesc.set.bind(this):descriptor.set.bind(this._root), thisDesc.enumerable, thisDesc.configurable)
-                                        }else if(typeof descriptor.value == 'function'){
-                                            // Save previous inheritance method with name ['__$super'+ methodName + '__']                                    
-                                            this[originMethodName] = getSuperMethod(this, methodName);
-                                            // Rewrite the origin super root method by this[methodName].
-                                            this._root[methodName] = this[methodName].bind(this);
-                                        }else{
-                                            Object.defineProperty(this._root, originMethodName, descriptor);
-                                            Object.defineProperty(this._root, methodName, thisDesc);
+                                        const rootDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this._root, methodName);
+                                        if(!rootDesc) {                                            
+                                            cc.warn('Overriding is not success. Because the root component \"' + cc.js.getClassName(this._root) + '\" has not \"' + methodName + '\" method.');
+                                        }
+                                        if(rootDesc){
+                                            if(rootDesc.get || rootDesc.set){                                        
+                                                cc.js.getset(this, originMethodName, rootDesc.get.bind(this._root), rootDesc.set.bind(this._root), rootDesc.enumerable, rootDesc.configurable);                                        
+                                                cc.js.getset(this._root, methodName, thisDesc.get ? thisDesc.get.bind(this) : rootDesc.get.bind(this._root) , thisDesc.set ? thisDesc.set.bind(this):rootDesc.set.bind(this._root), thisDesc.enumerable, thisDesc.configurable)
+                                            }else if(typeof rootDesc.value == 'function'){
+                                                // Save previous inheritance method with name ['__$super'+ methodName + '__']                                    
+                                                this[originMethodName] = getSuperMethod(this, methodName);
+                                                // Rewrite the origin super root method by this[methodName].
+                                                this._root[methodName] = this[methodName].bind(this);
+                                            }else{
+                                                Object.defineProperty(this, originMethodName, rootDesc);
+                                                if(thisDesc.get || thisDesc.set){
+                                                    cc.js.getset(this._root, methodName, thisDesc.get ? thisDesc.get.bind(this) : function(){return this[originMethodName]}.bind(this) , thisDesc.set ? thisDesc.set.bind(this):function(value:any){this[originMethodName] = value}.bind(this), thisDesc.enumerable, thisDesc.configurable)
+                                                }else if(this.thisDesc.value == 'function'){
+                                                    cc.js.getset(this._root, methodName, thisDesc.value.bind(this), thisDesc.value.bind(this), thisDesc.enumerable, thisDesc.configurable)
+                                                    // this._root[methodName] = this[methodName].bind(this);
+                                                }else{                                                    
+                                                    Object.defineProperty(this._root, methodName, thisDesc);
+                                                }
+                                                
+                                            }
                                         }
                                     }
                                 }
                             })
                         }
                         // 
-                        const defaultFuntion:Function = function(){};
+                        // const defaultFuntion:Function = function(){};
                         // Define this.super with proxy
                         if(!this.super && this._root && this._$super){                        
                             const superProxy = new Proxy(this._root, {
                                 get: (target:any, prop:string) => {                                    
                                     if (Object.prototype.hasOwnProperty.call(target, prop)) {                                
                                         if (typeof target[prop] === 'function' ) {
-                                            if(listOfOverrideMethods && listOfOverrideMethods.has(prop)){                                                    
+                                            if(listOfOverrideMethods && listOfOverrideMethods.has(prop)){
                                                 return this['__$super'+ prop + '__'];
                                             }
                                             return target[prop].bind(target);
@@ -116,12 +129,12 @@ export function override(target: cc.Component, propertyKey: string, descriptor: 
                                             return target[prop];
                                         }
                                     }else{
-                                        return this['__$super'+ prop + '__'] || defaultFuntion;
+                                        return this['__$super'+ prop + '__'] //|| defaultFuntion;
                                     }
                                 },
                                 set:(target:any, prop:string, value:any):boolean => {
                                     if (typeof target[prop] !== 'function' ) {
-                                        if(listOfOverrideMethods && listOfOverrideMethods.has(prop)){                                                    
+                                        if(listOfOverrideMethods && listOfOverrideMethods.has(prop)){
                                             this['__$super'+ prop + '__'] = value;                                            
                                         }else{
                                             target[prop] = value
@@ -154,7 +167,7 @@ export function override(target: cc.Component, propertyKey: string, descriptor: 
             })       
             this._$super = null;
             this._root = null;
-            this.super = null;
+            delete this.super;
         })(target['onDestroy'])
     }
 
