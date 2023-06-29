@@ -1,3 +1,7 @@
+// import { _decorator, Component, Enum, error, js, Node } from 'cc';
+// import { DEV } from 'cc/env';
+const { ccclass, property } = cc._decorator;
+const OVERRIDE_METHOD_MAP:string = '__$OverrideMethodMap__';
 /**
  * Instance Inheritance Component | Implemented of Parasite Component.
  * - Extending this class to modify these methods of super class.
@@ -10,172 +14,49 @@
  * Author by hallopatidu@gmail.com
  */
 
-const {ccclass, property} = cc._decorator;
-const OVERRIDE_METHOD_MAP:string = '__$OverrideMethodMap__';
-function getSuperMethod(target:any, methodName:string):Function{
-    if(!target._$super || !target._root){
-        return null
-    }
-    // In the case, this component is a first parasite component, we get function method from prototype of super.
-    // In other case, these funtions would be get from the super instance.
-    
-    const superTarget:any = (target._$super === target._root) ? Object.getPrototypeOf(target['_$super']) : target._$super;    
-    const superFuntion:Function = superTarget[methodName];
-    if(superFuntion){
-        return superFuntion.bind(target._$super);
-    }else{
-        return getSuperMethod(target._$super, methodName);
-    }
-}
-
 /**
- * Can add override method for this method.
- * @param target 
- * @param propertyKey 
- * @param descriptor 
- */
+     * Can add override method for this method.
+     * @param target 
+     * @param propertyKey  
+     * @param descriptor 
+     */
 export function override(target: cc.Component, propertyKey: string, descriptor: PropertyDescriptor){
     if(propertyKey === 'onLoad') {
         cc.error('Do not support overriding ' + propertyKey + ' method');
         return;
     }     
     if(CC_DEV){
-        // if(!(js.getSuper(target.constructor) == ParasiteComponent)){
         if(!cc.js.isChildClassOf(target.constructor, ParasiteComponent)){
             cc.error('You should extending ParasiteComponent Class for this class to use @override');
         }
     }
-    const methodName:string = propertyKey;
-    let hasNewParasiteClass:boolean = false;
-    let hasNewParasiteMethod:boolean = false;
+    // 
     let listOfOverrideMethods:Set<string> = target[OVERRIDE_METHOD_MAP];       
     if(!listOfOverrideMethods){
         listOfOverrideMethods = target[OVERRIDE_METHOD_MAP] = new Set<string>();
-        hasNewParasiteClass = true
     } 
     if(!listOfOverrideMethods.has(propertyKey)){
         listOfOverrideMethods.add(propertyKey);
-        hasNewParasiteMethod = true
     }
-    if(hasNewParasiteClass && hasNewParasiteMethod ){
-        target['onLoad'] = ((previousOnLoad:Function)=> function(){
-            if(!this.enabled) return;
-            if(!this.super){
-                const comps:cc.Component[] = this.node.getComponents(cc.Component);
-                let lastComponent:cc.Component;
-                for (let index = 0; index < comps.length; index++) {  
-                    const comp:any = comps[index];
-                    if(!comp) continue;
-                    if(lastComponent && comp === this){
-                        if(lastComponent && lastComponent['_$super']){
-                            this._root = lastComponent['_root'] 
-                        }else{
-                            this._root = lastComponent
-                        }                        
-                        this._$super = lastComponent;
-                        this._$superName = cc.js.getClassName(this._$super) + ' <' + this._root['node']?.name + '>';
-                        // Initianizing the inheritance instance with 'this.super' property
-                        if(this._$super && this._root){
-                            // override all of methods has @override decorator tag.
-                            listOfOverrideMethods.forEach((methodName:string)=>{
-                                const originMethodName:string = '__$super'+ methodName + '__';
-                                const originSuperMethod:Function = this[originMethodName];
-                                if(!originSuperMethod){
-                                    const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this, methodName);                                    
-                                    if(thisDesc){
-                                        const rootDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this._root, methodName);
-                                        if(!rootDesc) {                                            
-                                            cc.warn('Overriding is not success. Because the root component \"' + cc.js.getClassName(this._root) + '\" has not \"' + methodName + '\" method.');
-                                        }
-                                        if(rootDesc){
-                                            if(rootDesc.get || rootDesc.set){                                        
-                                                cc.js.getset(this, originMethodName, rootDesc.get.bind(this._root), rootDesc.set.bind(this._root), rootDesc.enumerable, rootDesc.configurable);                                        
-                                                cc.js.getset(this._root, methodName, thisDesc.get ? thisDesc.get.bind(this) : rootDesc.get.bind(this._root) , thisDesc.set ? thisDesc.set.bind(this):rootDesc.set.bind(this._root), thisDesc.enumerable, thisDesc.configurable)
-                                            }else if(typeof rootDesc.value == 'function'){
-                                                // Save previous inheritance method with name ['__$super'+ methodName + '__']                                    
-                                                this[originMethodName] = getSuperMethod(this, methodName);
-                                                // Rewrite the origin super root method by this[methodName].
-                                                this._root[methodName] = this[methodName].bind(this);
-                                            }else{
-                                                Object.defineProperty(this, originMethodName, rootDesc);
-                                                if(thisDesc.get || thisDesc.set){
-                                                    cc.js.getset(this._root, methodName, thisDesc.get ? thisDesc.get.bind(this) : function(){return this[originMethodName]}.bind(this) , thisDesc.set ? thisDesc.set.bind(this):function(value:any){this[originMethodName] = value}.bind(this), thisDesc.enumerable, thisDesc.configurable)
-                                                }else if(this.thisDesc.value == 'function'){
-                                                    cc.js.getset(this._root, methodName, thisDesc.value.bind(this), thisDesc.value.bind(this), thisDesc.enumerable, thisDesc.configurable)
-                                                    // this._root[methodName] = this[methodName].bind(this);
-                                                }else{                                                    
-                                                    Object.defineProperty(this._root, methodName, thisDesc);
-                                                }
-                                                
-                                            }
-                                        }
-                                    }
-                                }
-                            })
-                        }
-                        // 
-                        // const defaultFuntion:Function = function(){};
-                        // Define this.super with proxy
-                        if(!this.super && this._root && this._$super){                        
-                            const superProxy = new Proxy(this._root, {
-                                get: (target:any, prop:string) => {                                    
-                                    if (Object.prototype.hasOwnProperty.call(target, prop)) {                                
-                                        if (typeof target[prop] === 'function' ) {
-                                            if(listOfOverrideMethods && listOfOverrideMethods.has(prop)){
-                                                return this['__$super'+ prop + '__'];
-                                            }
-                                            return target[prop].bind(target);
-                                        } else {
-                                            return target[prop];
-                                        }
-                                    }else{
-                                        return this['__$super'+ prop + '__'] //|| defaultFuntion;
-                                    }
-                                },
-                                set:(target:any, prop:string, value:any):boolean => {
-                                    if (typeof target[prop] !== 'function' ) {
-                                        if(listOfOverrideMethods && listOfOverrideMethods.has(prop)){
-                                            this['__$super'+ prop + '__'] = value;                                            
-                                        }else{
-                                            target[prop] = value
-                                        }
-                                        return true
-                                    }
-                                    return false
-                                }
-                            });
-                            Object.defineProperty(this, 'super', {
-                                get:()=>superProxy
-                            })
-                        }                            
-                        break;
-                    }else if(comp.enabled){                    
-                        lastComponent = comp;
-                    }
-                    
-                }// end for
-            }
-
-            return previousOnLoad ? previousOnLoad.call(this) : null;
-        })(target['onLoad']);
-        // 
-        target['onDestroy'] = ((previousDestroy:Function)=>function(){            
-            previousDestroy ? previousDestroy.call(this) : null;
-            listOfOverrideMethods.forEach((methodName:string)=>{
-                const originMethodName:string = '__$super'+ methodName + '__';
-                delete this[originMethodName];
-            })       
-            this._$super = null;
-            this._root = null;
-            delete this.super;
-        })(target['onDestroy'])
-    }
+    
 
 }
 
-@ccclass
-export default abstract class ParasiteComponent<SuperComponent=cc.Component> extends cc.Component {
+// enum ParasiteType{
+//     SIMPLE,
+//     INHERITANCE
+// }
 
+// Enum(ParasiteType)
+
+@ccclass('ParasiteComponent')
+export abstract class ParasiteComponent<SuperComponent=cc.Component> extends cc.Component {
+
+    // @property({
+    //     type:ParasiteType
+    // })
+    // type:ParasiteType = 0
+    
     @property({
         displayName: 'Extends',        
         readonly:true
@@ -184,8 +65,162 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
         return this._$superName
     }
 
-    protected _root:cc.Component = null;
-    protected _$super:SuperComponent = null;    
-    protected _$superName:string = '';
-    protected super:SuperComponent&cc.Component = null;
+    private _$host:cc.Component = null;
+    private _$super:cc.Component = null;    
+    private _$superName:string = null;
+    protected super:SuperComponent&cc.Component = null;    
+
+    /**
+     *
+     */
+    constructor() {        
+        super();
+        this.onLoad = ((previousOnLoad:Function)=> ()=>{
+            // if(!this.super){        
+                const listOfOverrideMethods:Set<string> = this[OVERRIDE_METHOD_MAP];
+                const allNodeComponents:cc.Component[] = this.node.getComponents(cc.Component);
+                const numberOfComponent:number = allNodeComponents.length;
+                const adjacentComp:cc.Component = allNodeComponents.find((component:cc.Component, index:number, allComponents:cc.Component[])=>{                    
+                    const nextComp:cc.Component = index < (numberOfComponent - 1) ? allComponents[index+1] : null;
+                    return (nextComp == this) && !!component;
+                })
+                if(adjacentComp){
+                    this._$super = adjacentComp;
+                    this._$superName = cc.js.getClassName(adjacentComp)
+                    if(cc.js.isChildClassOf(adjacentComp.constructor, ParasiteComponent)){
+                        this._$host = adjacentComp['_$host'];
+                    }else{
+                        this._$host = adjacentComp;
+                    }
+                    // 
+                    if(this._$host && this._$super){
+                        // 
+                        // override all of methods has @override decorator tag.
+                        listOfOverrideMethods && listOfOverrideMethods.forEach((methodName:string)=>{
+                            const originMethodName:string = '__$super'+ methodName + '__';
+                            const originHostMethod:Function = this._$host[originMethodName];
+                            if(!originHostMethod){
+                                Object.defineProperty(this._$host, originMethodName, cc.js.getPropertyDescriptor(this._$host, methodName));
+                            }
+                            const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this, methodName);
+                            const hostDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this._$host, methodName);                            
+                            if(thisDesc){
+                                if(hostDesc.get || hostDesc.set){                                    
+                                    cc.js.getset(this._$host, 
+                                        methodName, 
+                                        thisDesc.get ? thisDesc.get.bind(this) : hostDesc.get.bind(this._$host) , 
+                                        thisDesc.set ? thisDesc.set.bind(this): hostDesc.set.bind(this._$host), 
+                                        thisDesc.enumerable, 
+                                        thisDesc.configurable);
+                                    
+                                }else if(hostDesc.value && typeof hostDesc.value == 'function'){                                    
+                                    // Rewrite the host's method by this[methodName].
+                                    this._$host[methodName] = this[methodName].bind(this);
+                                }else {        
+                                    // If method is a normal attribute of host's class but you want to convert it to be a get/set method.                               
+                                    if(thisDesc.get || thisDesc.set){                                                                                     
+                                        cc.js.getset(this._$host, 
+                                            methodName, 
+                                            thisDesc.get ? thisDesc.get.bind(this) : ()=>{
+                                                return this._$host[originMethodName]
+                                            } , 
+                                            thisDesc.set ? thisDesc.set.bind(this): (value:any)=>{
+                                                this._$host[originMethodName] = value
+                                            }, 
+                                            thisDesc.enumerable, 
+                                            thisDesc.configurable)
+                                    }
+                                    // else{
+                                    //     Object.defineProperty(this._$host, methodName, thisDesc);
+                                    // }
+                                }
+                            }
+                            
+                        });
+                        // 
+                        const superProxy = new Proxy(this._$super, {
+                            get: (target:any, prop:string) => {
+                                if(listOfOverrideMethods && listOfOverrideMethods.has(prop)){
+                                    return this.getSuperMethod(target, prop)
+                                }
+                                return function(){cc.error('Do not exist "' + prop + '" function or property  of ' + cc.js.getClassName(target) + ' component.')};
+                            },
+                            set:(target:any, prop:string, value:any):boolean => {
+                                if(listOfOverrideMethods && listOfOverrideMethods.has(prop)){
+                                    this.setSuperMethod(target, prop, value)
+                                    return true;
+                                }
+                                return false;
+                            }
+                        })
+                        Object.defineProperty(this, 'super', {
+                            get:()=>superProxy
+                        })
+                    }else{
+                        cc.error("Can't override")
+                    }
+                // }
+            }
+            return previousOnLoad ? previousOnLoad.call(this) : null;
+        })(this.onLoad);
+
+        this.onDestroy = ((previousDestroy:Function)=>function(){            
+            previousDestroy ? previousDestroy.call(this) : null;
+            // const listOfOverrideMethods:Set<string> = this[OVERRIDE_METHOD_MAP];
+            // listOfOverrideMethods.forEach((methodName:string)=>{
+            //     const originMethodName:string = '__$super'+ methodName + '__';
+            //     if(this._$host && this._$host[originMethodName] && ){
+            //         this._$host[originMethodName] 
+            //     }
+            //     delete this[originMethodName];
+            // }) 
+            this._$super = null;
+            this._$host = null;
+            delete this.super;
+        })(this.onDestroy)
+    }
+
+    /**
+     * 
+     * @param superTarget 
+     * @param methodName 
+     * @returns 
+     */
+    private getSuperMethod(superTarget:any, methodName:string):Function|null{
+        if(!superTarget){
+            return null
+        }
+        const methodDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(superTarget, methodName);
+        if(methodDesc && (methodDesc.value || methodDesc.get)){
+            return (methodDesc.value || methodDesc.get).bind(superTarget);
+        }else{
+            return this.getSuperMethod(superTarget._$super, methodName);
+        }        
+    }
+
+    /**
+     * 
+     * @param superTarget 
+     * @param methodName 
+     * @param value 
+     * @returns 
+     */
+    private setSuperMethod(superTarget:any, methodName:string, value:any):boolean{
+        if(!superTarget){
+            return false
+        }
+        const originMethodName:string = '__$super'+ methodName + '__';
+        const methodDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(superTarget, originMethodName) || cc.js.getPropertyDescriptor(superTarget, methodName);
+        if(methodDesc && methodDesc.set){
+            methodDesc.set.call(superTarget, value)
+            return true;
+        }else if(methodDesc){
+            superTarget[methodName] = value;
+        }else{
+            return this.setSuperMethod(superTarget._$super, methodName, value);
+        } 
+    }
+
+
 }
+
