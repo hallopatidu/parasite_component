@@ -21,7 +21,7 @@ const OVERRIDE_METHOD_MAP:string = '__$OverrideMethodMap__';
      * @param descriptor 
      */
 export function override(target: cc.Component, propertyKey: string, descriptor: PropertyDescriptor){
-    if(propertyKey === 'onLoad') {
+    if(propertyKey === 'onLoad' || propertyKey === 'onDestroy') {
         cc.error('Do not support overriding ' + propertyKey + ' method');
         return;
     }     
