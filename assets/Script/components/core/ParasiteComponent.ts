@@ -14,44 +14,33 @@
 const {ccclass, property} = cc._decorator;
 const OVERRIDE_METHOD_MAP:string = '__$OverrideMethodMap__';
 
-function excuteOverride(target:cc.Component){
-
-}
-
 /**
-     * Can add override method for this method.
-     * @param target 
-     * @param propertyKey 
-     * @param descriptor 
-     */
+ * Can add override method for this method.
+ * @param target 
+ * @param propertyKey 
+ * @param descriptor 
+ */
 export function override(target: cc.Component, propertyKey: string, descriptor: PropertyDescriptor){
     if(propertyKey === 'onLoad') {
         cc.error('Do not support overriding ' + propertyKey + ' method');
         return;
     }     
     if(CC_DEV){
-        // if(!(js.getSuper(target.constructor) == ParasiteComponent)){
         if(!cc.js.isChildClassOf(target.constructor, ParasiteComponent)){
             cc.error('You should extending ParasiteComponent Class for this class to use @override');
         }
     }
-    // const methodName:string = propertyKey;
-    // let hasNewParasiteClass:boolean = false;
-    // let hasNewParasiteMethod:boolean = false;
+    // 
     let listOfOverrideMethods:Set<string> = target[OVERRIDE_METHOD_MAP];       
     if(!listOfOverrideMethods){
         listOfOverrideMethods = target[OVERRIDE_METHOD_MAP] = new Set<string>();
-        // hasNewParasiteClass = true
     } 
     if(!listOfOverrideMethods.has(propertyKey)){
         listOfOverrideMethods.add(propertyKey);
-        // hasNewParasiteMethod = true
     }
     // 
     
 }
-
-
 
 
 @ccclass
