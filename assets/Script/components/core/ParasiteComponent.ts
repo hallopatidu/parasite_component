@@ -117,7 +117,7 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
                             thisDesc.set ? thisDesc.set.bind(this) : hostDesc.set, 
                             thisDesc.enumerable, 
                             thisDesc.configurable)
-                    }else if(hostDesc.value && typeof hostDesc.value == 'function'){
+                    }else if(hostDesc.value !== undefined && typeof hostDesc.value == 'function'){
                         cc.js.value(this._$host, 
                             thisDesc.value ? thisDesc.value.bind(this) : hostDesc.value, 
                             thisDesc.enumerable || hostDesc.enumerable , 
