@@ -107,11 +107,9 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
             listOfOverrideMethods && listOfOverrideMethods.forEach((methodName:string)=>{
                 const originMethodName:string = this.__getOriginMethodName(methodName);
                 const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this, methodName);
-                const superDesc:PropertyDescriptor = this.getSuperPropertyDescriptor(this._$super, methodName);
-                // 
                 if(this._$host && thisDesc){
                     const hostDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this._$host, methodName);
-                    Object.defineProperty(this, originMethodName, hostDesc);
+                    Object.defineProperty(this._$host, originMethodName, hostDesc);
                     if(hostDesc.get || hostDesc.set){
                         cc.js.getset(this._$host, 
                             methodName, 
@@ -130,20 +128,21 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
                             cc.js.getset(this._$host, 
                                 methodName, 
                                 thisDesc.get ? thisDesc.get.bind(this) : ()=>{
-                                    return this[originMethodName]
+                                    return this._$host[originMethodName]
                                 } , 
                                 thisDesc.set ? thisDesc.set.bind(this): (value:any)=>{
-                                    this[originMethodName] = value
+                                    this._$host[originMethodName] = value
                                 }, 
-                                thisDesc.enumerable, 
+                                thisDesc.enumerable,
                                 thisDesc.configurable)
                         }
                     }
-                }else if(superDesc && thisDesc){
-                    Object.defineProperty(this, originMethodName, superDesc);
                 }
+                // 
             })
-        }        
+            // 
+        }      
+        //   
     }
 
     /**
@@ -152,26 +151,8 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
     private __initSuper(){
         if(!this.super && this._$super){
             const superProxy = new Proxy(this, {
-                get: (target:any, prop:string) => {
-                    const originMethodName:string = this.__getOriginMethodName(prop);
-                    if(target._$super){
-                        return target[originMethodName] ? target[originMethodName].bind(target._$super) : target._$super[prop];
-                    }else{
-                        return function(){cc.error('khong ton tai super !')};
-                    }
-                },
-                set:(target:any, prop:string, value:any):boolean => {                    
-                    const originMethodName:string = this.__getOriginMethodName(prop);
-                    const methodDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(target, originMethodName);
-                    if(methodDesc && methodDesc.set){
-                        methodDesc.set.call(target._$super, value);
-                        return true
-                    }else if(target._$super){
-                        target._$super[prop] = value;
-                        return true
-                    }
-                    return false;
-                }
+                get: (target:any, prop:string) => this.callSuperMethod(target, prop) || function(){cc.error('khong ton tai super !')},
+                set:(target:any, prop:string, value:any):boolean => !!this.callSuperMethod(target, prop, value)
             });
             // 
             Object.defineProperty(this, 'super', {
@@ -188,9 +169,10 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
             const listOfOverrideMethods:Set<string> = this[OVERRIDE_METHOD_MAP];
             listOfOverrideMethods && listOfOverrideMethods.forEach((methodName:string)=>{
                 const originMethodName:string = this.__getOriginMethodName(methodName);
-                const originDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this, originMethodName);
+                const originDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this._$host, originMethodName);
                 if(originDesc){
                     Object.defineProperty(this._$host, methodName, originDesc);
+                    delete this._$host[originMethodName];
                 }
             })
         }
@@ -207,15 +189,49 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
 
     /**
      * 
-     * @param superTarget 
+     * @param target 
      * @param methodName 
      * @returns 
      */
-    private getSuperPropertyDescriptor(superTarget:any, methodName:string):PropertyDescriptor{
-        if(!superTarget){
+    private getSuperPropertyDescriptor(target:any, methodName:string):PropertyDescriptor{
+        if(!target){
             return null
-        }        
-        return cc.js.getPropertyDescriptor(superTarget, methodName) || this.getSuperPropertyDescriptor(superTarget._$super, methodName)
+        }
+        if(!cc.js.isChildClassOf(target._$super.constructor, ParasiteComponent)){
+            return cc.js.getPropertyDescriptor(target._$super, this.__getOriginMethodName(methodName))
+        }
+        return cc.js.getPropertyDescriptor(target._$super, methodName) || this.getSuperPropertyDescriptor(target._$super._$super, methodName)
+        // return cc.js.getPropertyDescriptor(target._$super, this.__getOriginMethodName(methodName)) || cc.js.getPropertyDescriptor(target._$super, methodName) || this.getSuperPropertyDescriptor(target._$super._$super, methodName)
+    }
+
+    /**
+     * 
+     * @param target 
+     * @param methodName 
+     * @returns 
+     */
+    private callSuperMethod(target:any , methodName:string, value:any = undefined):Function{
+        if(!target){
+            return null
+        }
+        const superDesc:PropertyDescriptor = !cc.js.isChildClassOf(target._$super.constructor, ParasiteComponent) ? cc.js.getPropertyDescriptor(target._$super, this.__getOriginMethodName(methodName)) : ( cc.js.getPropertyDescriptor(target._$super, methodName) || this.getSuperPropertyDescriptor(target._$super, methodName) )        
+        if(!superDesc) return null;
+        if(superDesc.set && value !== undefined){
+            return superDesc.set.call(target._$super, value);
+        }else if(superDesc.value && typeof superDesc.value == 'function'){
+            return superDesc.value.bind(target._$super)
+        }else if(superDesc.get){
+            return superDesc.get.bind(target._$super);
+        }else{
+            if(Object.prototype.hasOwnProperty.call(target._$super, methodName)){
+                if(value !== undefined){
+                    return ()=> target._$super[methodName] = value;
+                }else{
+                    return ()=> target._$super[methodName]
+                }
+            }
+            return null;
+        }
     }
 
 }
