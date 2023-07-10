@@ -9,10 +9,11 @@
 
 import ParasiteComponent, {override} from "../../core/ParasiteComponent";
 
-const {ccclass, property} = cc._decorator;
+const {ccclass, property, executeInEditMode} = cc._decorator;
 const EffectLayerName:string = 'effect_layer_node'
 
 @ccclass
+@executeInEditMode
 export default class BasicTransition extends ParasiteComponent<cc.Sprite> {
 
     protected isReady:boolean = true
@@ -22,8 +23,9 @@ export default class BasicTransition extends ParasiteComponent<cc.Sprite> {
         if(this.isReady){
             this.isReady = false
             cc.log('new update')
-            let effectNode:cc.Node = this.getEffectNode()
+            let effectNode:cc.Node = this.getEffectNode();
             const effecSprite:cc.Sprite = effectNode.getComponent(cc.Sprite);
+            const asuper:any = this.super;
             effecSprite.spriteFrame = this.super.spriteFrame;
             const startPos:cc.Vec3 = this.node.position.clone();
             const targetPos:cc.Vec3 = startPos.clone().add(new cc.Vec3(0,500,0));
@@ -36,7 +38,14 @@ export default class BasicTransition extends ParasiteComponent<cc.Sprite> {
             })
             .start();
             this.super.spriteFrame = value;
+        }else{
+            this.super.spriteFrame = value;
         }
+    }
+
+    @override
+    _validateRender(){
+        this.super['_validateRender']()
     }
 
     protected getEffectNode():cc.Node{
