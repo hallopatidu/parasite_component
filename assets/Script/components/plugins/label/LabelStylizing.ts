@@ -15,12 +15,12 @@ export default class LabelStylizing extends ParasiteComponent<cc.Label> {
 
     @override
     set string(value:string){
-        cc.log('Inject to label !!!!' + Math.random()*2000)
+        cc.log('Inject to label !!!!' + Math.random()*2000 )
         this.super.string = value + ' --- injected';
     }
 
     protected onLoad(): void {
-        cc.log('------------')
+        cc.log('------------' + cc.js.getClassName(this))
     }
     
 }
