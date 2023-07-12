@@ -99,10 +99,16 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
         let hostComp:cc.Component = null;
         let firstParasite:cc.Component = null;
         let isFinalParasite:boolean = false;
-        const behindCompIndex:number = allNodeComponents.findIndex((component:cc.Component, index:number, allComponents:cc.Component[])=>{            
-            hostComp = cc.js.isChildClassOf(component.constructor, ParasiteComponent) ? hostComp : component;
-            firstParasite = index - 1 >= 0 && !cc.js.isChildClassOf(allComponents[index-1].constructor, ParasiteComponent) ? component : firstParasite;
-            const nextComp:cc.Component = index < (numberOfComponent - 1) ? allComponents[index+1] : null;
+        const behindCompIndex:number = allNodeComponents.findIndex((component:cc.Component, index:number, allComponents:cc.Component[])=>{
+            const componentIsParasite:boolean = cc.js.isChildClassOf(component.constructor, ParasiteComponent);
+            hostComp = componentIsParasite ? hostComp : component;            
+            // firstParasite = index - 1 >= 0 && !cc.js.isChildClassOf(allComponents[index-1].constructor, ParasiteComponent) ? component : firstParasite;
+            let nextComp:cc.Component = null;
+            if(index < numberOfComponent - 1){
+                nextComp = allComponents[index+1]
+                firstParasite = nextComp && !componentIsParasite ? nextComp : firstParasite;
+            }
+            // const nextComp:cc.Component = index < (numberOfComponent - 1) ? allComponents[index+1] : null;
             return nextComp && (nextComp == this) && !!component;
         })
         const behindComp:cc.Component = allNodeComponents[behindCompIndex];
@@ -130,21 +136,17 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
                 const hostDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(hostComp, methodName);
                 //
                 if(firstParasite && hostDesc && !Object.prototype.hasOwnProperty.call(firstParasite, originMethodName)){                    
-                    Object.defineProperty(firstParasite, originMethodName, hostDesc);
+                    Object.defineProperty(firstParasite, originMethodName, hostDesc);                    
                     // if(hostDesc){
                     //     if(hostDesc.get || hostDesc.set){
                     //         cc.js.getset(firstParasite, 
                     //             originMethodName, 
-                    //             hostDesc.get ? hostDesc.get.bind(hostComp): null, 
-                    //             hostDesc.set ? hostDesc.set.bind(hostComp): null, 
+                    //             hostDesc.get?.bind(hostComp), 
+                    //             hostDesc.set?.bind(hostComp), 
                     //             hostDesc.enumerable, 
                     //             hostDesc.configurable);
                     //     }else if(hostDesc.value !== undefined && typeof hostDesc.value == 'function'){
                     //         cc.js.value(firstParasite, originMethodName, hostDesc.value.bind(hostComp), hostDesc.enumerable, hostDesc.configurable)
-                    //     }else{
-                    //         if(thisDesc.get || thisDesc.set){   
-                    //             Object.defineProperty(firstParasite, originMethodName, hostDesc);
-                    //         }
                     //     }
                     // }
                 }
@@ -238,13 +240,19 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
         }
         const originMethodName:string = this.__getOriginMethodName(methodName);
         const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(target, originMethodName);
-        
         if(thisDesc && thisDesc.get){
-
+            return thisDesc.get.bind(target._$super)
+        }else if(thisDesc && thisDesc.value && typeof thisDesc.value == 'function'){
+            return thisDesc.value.bind(target._$super)
+        }else{
+            const desc:PropertyDescriptor = cc.js.getPropertyDescriptor(target._$super, methodName);
+            if(desc && desc.get){
+                return desc.get.bind(target._$super)
+            }else{
+                return this.__getParasiteSuperMethod(target._$super, methodName);
+            }
         }
-
-        // cc.log('Call to method ' + methodName + 'from : ' + cc.js.getClassName(target))
-        // return target[originMethodName] ? target[originMethodName] : (target._$super && Object.prototype.hasOwnProperty.call(target._$super, methodName)) ? target._$super[methodName] : this.__getParasiteSuperMethod(target._$super, methodName);        
+        // 
     }
     
     /**
@@ -259,11 +267,8 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
             return false
         }
         const originMethodName:string = this.__getOriginMethodName(methodName);
-        // cc.log('Set to method ' + methodName + 'from : ' + cc.js.getClassName(target) + ' value:: ' + value)
         const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(target, originMethodName)
         if(thisDesc && thisDesc.set){
-            // cc.log('|___ call origin:: ' + cc.js.getClassName(target._$super) + ' method: ' + originMethodName)
-            // target[originMethodName] = value;
             thisDesc.set.call(target._$super, value)
             return true;
         }else{
@@ -273,17 +278,9 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
                 desc.set.call(target._$super, value)
                 return true;
             }else{
-                return this.__setParasiteSuperMethod(target._$super, methodName, value)
+                return this.__setParasiteSuperMethod(target._$super, methodName, value);
             }
-        }
-        
-        // else if(target._$super && Object.prototype.hasOwnProperty.call(target._$super, methodName)){
-        //     cc.log('|___ call super:: ' + cc.js.getClassName(target._$super))
-        //     target._$super[methodName] = value;
-        //     return true;
-        // }else{
-        //     return this.__setParasiteSuperMethod(target._$super, methodName, value)
-        // }        
+        }     
     }
 
     
