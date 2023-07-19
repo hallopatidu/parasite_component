@@ -136,33 +136,12 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
                 const hostDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(hostComp, methodName);
                 //
                 if(firstParasite && hostDesc && !Object.prototype.hasOwnProperty.call(firstParasite, originMethodName)){                    
-                    Object.defineProperty(firstParasite, originMethodName, hostDesc);                    
-                    // if(hostDesc){
-                    //     if(hostDesc.get || hostDesc.set){
-                    //         cc.js.getset(firstParasite, 
-                    //             originMethodName, 
-                    //             hostDesc.get?.bind(hostComp), 
-                    //             hostDesc.set?.bind(hostComp), 
-                    //             hostDesc.enumerable, 
-                    //             hostDesc.configurable);
-                    //     }else if(hostDesc.value !== undefined && typeof hostDesc.value == 'function'){
-                    //         cc.js.value(firstParasite, originMethodName, hostDesc.value.bind(hostComp), hostDesc.enumerable, hostDesc.configurable)
-                    //     }
-                    // }
+                    Object.defineProperty(firstParasite, originMethodName, hostDesc);
                 }
                 // 
                 if(isFinalParasite && thisDesc && firstParasite){
-                    // const hostDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(this._$host, methodName);
                     if(hostDesc){
-                        // Object.defineProperty(this, originMethodName, hostDesc);
                         if(hostDesc.get || hostDesc.set){
-                            cc.log('register get/set')
-                            // cc.js.getset(firstParasite, 
-                            //     originMethodName, 
-                            //     hostDesc.get ? hostDesc.get.bind(this._$host): null, 
-                            //     hostDesc.set ? hostDesc.set.bind(this._$host): null, 
-                            //     hostDesc.enumerable, 
-                            //     hostDesc.configurable);
                             delete hostComp[methodName];
                             cc.js.getset(hostComp, 
                                 methodName, 
@@ -171,19 +150,16 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
                                 thisDesc.enumerable, 
                                 thisDesc.configurable);
 
-                        }else if(hostDesc.value !== undefined && typeof hostDesc.value == 'function'){
-                            cc.log('register function')
-                            // cc.js.value(firstParasite, originMethodName, hostDesc.value.bind(this._$host), hostDesc.enumerable, hostDesc.configurable)
+                        }else if(hostDesc.value !== undefined && typeof hostDesc.value == 'function'){                           
                             cc.js.value(hostComp, 
+                                methodName,
                                 thisDesc.value ? thisDesc.value.bind(this) : hostDesc.value.bind(hostComp), 
-                                thisDesc.enumerable || hostDesc.enumerable , 
-                                thisDesc.configurable || hostDesc.configurable );
+                                thisDesc.value ? thisDesc.writable : hostDesc.writable, 
+                                thisDesc.value ? thisDesc.enumerable : hostDesc.enumerable );
 
                         }else{
-                            cc.log('register property')
                             // If method is a normal attribute of host's class but you want to convert it to be a get/set method.                            
-                            if(thisDesc.get || thisDesc.set){                                
-                                // Object.defineProperty(firstParasite, originMethodName, hostDesc);
+                            if(thisDesc.get || thisDesc.set){
                                 cc.js.getset(hostComp, 
                                     methodName, 
                                     thisDesc.get ? thisDesc.get.bind(this) : ()=>{
@@ -198,8 +174,7 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
                         }
                     }
 
-                }           
-                else{
+                } else {
                     delete this[originMethodName];
                 }
                 // 
@@ -235,21 +210,19 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
      * @returns 
      */
     private __getParasiteSuperMethod(target:any, methodName:string):Function{
-        if(!target){
+        if(!target || !target._$super){
             return null;
         }
         const originMethodName:string = this.__getOriginMethodName(methodName);
         const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(target, originMethodName);
         if(thisDesc && thisDesc.get){
-            // return thisDesc.get.bind(target._$super)
             return thisDesc.get.call(target._$super)
         }else if(thisDesc && thisDesc.value && typeof thisDesc.value == 'function'){
             return thisDesc.value.bind(target._$super)
         }else{
             const desc:PropertyDescriptor = cc.js.getPropertyDescriptor(target._$super, methodName);
             if(desc && desc.get){
-                return desc.get.call(target._$super)
-                // return desc.get.bind(target._$super)
+                return desc.get.call(target._$super);
             }else{
                 return this.__getParasiteSuperMethod(target._$super, methodName);
             }
@@ -276,7 +249,6 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
         }else{
             const desc:PropertyDescriptor = cc.js.getPropertyDescriptor(target._$super, methodName)
             if(desc && desc.set){
-                // target._$super[methodName] = value;
                 desc.set.call(target._$super, value)
                 return true;
             }else{

@@ -23,7 +23,6 @@ export default class BasicTransition extends ParasiteComponent<cc.Sprite> {
         const lastSpriteFrame:cc.SpriteFrame = this.super.spriteFrame
         if(this.isReady && lastSpriteFrame){
             this.isReady = false
-            cc.log('new update')
             let effectNode:cc.Node = this.getEffectNode();
             const effecSprite:cc.Sprite = effectNode.getComponent(cc.Sprite);
             const asuper:any = this.super;
@@ -43,12 +42,7 @@ export default class BasicTransition extends ParasiteComponent<cc.Sprite> {
             this.super.spriteFrame = value;
         }
     }
-
-    @override
-    _validateRender(){
-        cc.log('validate render')
-        this.super['_validateRender']()
-    }
+    
 
     protected getEffectNode():cc.Node{
         const startPos:cc.Vec3 = this.node.position.clone();
