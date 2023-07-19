@@ -211,7 +211,7 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
      */
     private __getParasiteSuperMethod(target:any, methodName:string):Function{
         if(!target || !target._$super){
-            return null;
+            return undefined;
         }
         const originMethodName:string = this.__getOriginMethodName(methodName);
         const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(target, originMethodName);
@@ -238,7 +238,7 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
      * @returns 
      */
     private __setParasiteSuperMethod(target:any, methodName:string, value:any = undefined):boolean{
-        if(!target){
+        if(!target || !target._$super){
             return false
         }
         const originMethodName:string = this.__getOriginMethodName(methodName);
