@@ -20,7 +20,8 @@ export default class BasicTransition extends ParasiteComponent<cc.Sprite> {
    
     @override
     set spriteFrame (value:cc.SpriteFrame) {
-        if(this.isReady && this.super.spriteFrame){
+        const lastSpriteFrame:cc.SpriteFrame = this.super.spriteFrame
+        if(this.isReady && lastSpriteFrame){
             this.isReady = false
             cc.log('new update')
             let effectNode:cc.Node = this.getEffectNode();
@@ -45,6 +46,7 @@ export default class BasicTransition extends ParasiteComponent<cc.Sprite> {
 
     @override
     _validateRender(){
+        cc.log('validate render')
         this.super['_validateRender']()
     }
 
