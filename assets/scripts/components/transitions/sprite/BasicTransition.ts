@@ -1,5 +1,6 @@
 import { _decorator, Component, instantiate, log, Node, Sprite, SpriteFrame, tween, UITransform, v3, Vec3 } from 'cc';
-import { override, ParasiteComponent } from '../../core/ParasiteComponent';
+import ParasiteComponent, { override } from '../../core/ParasiteComponent';
+
 const { ccclass, property } = _decorator;
 
 const EffectLayerName:string = 'effect_layer';
@@ -12,8 +13,7 @@ export class BasicTransition extends ParasiteComponent<Sprite> {
     @override
     set spriteFrame (value:SpriteFrame) {
         if(this.isReady){
-            this.isReady = false
-            log('new update')
+            this.isReady = false;
             let effectNode:Node = this.getEffectNode()
             const effecSprite:Sprite = effectNode.getComponent(Sprite);
             effecSprite.spriteFrame = this.super.spriteFrame;
