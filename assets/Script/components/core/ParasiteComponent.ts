@@ -209,7 +209,7 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
      * @param methodName 
      * @returns 
      */
-    private __getParasiteSuperMethod(target:any, methodName:string):Function{
+    private __getParasiteSuperMethod(target:any, methodName:string):any{
         if(!target || !target._$super){
             return undefined;
         }
@@ -219,6 +219,8 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
             return thisDesc.get.call(target._$super)
         }else if(thisDesc && thisDesc.value && typeof thisDesc.value == 'function'){
             return thisDesc.value.bind(target._$super)
+        }else if(thisDesc && Object.prototype.hasOwnProperty.call(thisDesc, 'value')){
+            return thisDesc.value;
         }else{
             const desc:PropertyDescriptor = cc.js.getPropertyDescriptor(target._$super, methodName);
             if(desc && desc.get){
