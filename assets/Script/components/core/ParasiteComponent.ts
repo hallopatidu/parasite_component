@@ -217,14 +217,14 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
         const thisDesc:PropertyDescriptor = cc.js.getPropertyDescriptor(target, originMethodName);
         if(thisDesc && thisDesc.get){
             return thisDesc.get.call(target._$super)
-        }else if(thisDesc && thisDesc.value && typeof thisDesc.value == 'function'){
+        }else if(thisDesc && Object.prototype.hasOwnProperty.call(thisDesc, 'value') && typeof thisDesc.value == 'function'){
             return thisDesc.value.bind(target._$super)
-        }else if(thisDesc && Object.prototype.hasOwnProperty.call(thisDesc, 'value')){
-            return thisDesc.value;
         }else{
             const desc:PropertyDescriptor = cc.js.getPropertyDescriptor(target._$super, methodName);
             if(desc && desc.get){
                 return desc.get.call(target._$super);
+            }else if(desc && Object.prototype.hasOwnProperty.call(desc, 'value')){
+                return desc.value;
             }else{
                 return this.__getParasiteSuperMethod(target._$super, methodName);
             }
@@ -252,6 +252,9 @@ export default abstract class ParasiteComponent<SuperComponent=cc.Component> ext
             const desc:PropertyDescriptor = cc.js.getPropertyDescriptor(target._$super, methodName)
             if(desc && desc.set){
                 desc.set.call(target._$super, value)
+                return true;
+            }else if(desc && Object.prototype.hasOwnProperty.call(desc, 'value')){
+                target._$super[methodName] = value;
                 return true;
             }else{
                 return this.__setParasiteSuperMethod(target._$super, methodName, value);
