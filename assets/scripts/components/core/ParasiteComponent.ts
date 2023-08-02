@@ -62,8 +62,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         return this._$superName
     }
 
-    // protected _$first:cc.Component = null;
-    // protected _$host:cc.Component = null;
+    protected _$id:number = 0;
     protected _$super:Component = null;    
     protected _$superName:string = '';
     protected super:SuperComponent&Component = null;
@@ -101,8 +100,9 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
     /**
      * 
      */
-    private __excuteHierarchyOverridding(){
-        const allNodeComponents:Component[] = this.node.getComponents(Component);
+    private __excuteHierarchyOverridding(){ 
+        // const allNodeComponents:Component[] = this.node.getComponents(Component);
+        const allNodeComponents:ReadonlyArray<Component> = this.node.components;
         const numberOfComponent:number = allNodeComponents.length;
         let hostComp:Component = null;
         let firstParasite:Component = null;
@@ -113,12 +113,13 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
             // firstParasite = index - 1 >= 0 && !cc.js.isChildClassOf(allComponents[index-1].constructor, ParasiteComponent) ? component : firstParasite;
             let nextComp:Component = null;
             if(index < numberOfComponent - 1){
-                nextComp = allComponents[index+1]
+                nextComp = allComponents[index+1];
                 firstParasite = nextComp && !componentIsParasite ? nextComp : firstParasite;
             }
             // const nextComp:cc.Component = index < (numberOfComponent - 1) ? allComponents[index+1] : null;
             return nextComp && (nextComp == this) && !!component;
         })
+        this._$id = behindCompIndex + 1;
         const behindComp:Component = allNodeComponents[behindCompIndex];
         if(behindComp){
             this._$super = behindComp;
@@ -128,12 +129,6 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
                 // the last Parasite Component.       
                 isFinalParasite = true;
             }
-            // else{
-            //     delete this._$host;
-            // }            
-            // log('------ behindComp: ' + js.getClassName(behindComp) )
-            // cc.log('------ this: ' + cc.js.getClassName(this) )
-            // isFinalParasite ? log('------ hostComp: ' + js.getClassName(hostComp) ) : null
         }
         // 
         if(this._$super){
@@ -147,7 +142,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
                     Object.defineProperty(firstParasite, originMethodName, hostDesc);
                 }
                 // 
-                if(isFinalParasite && thisDesc && firstParasite){
+                if(thisDesc && firstParasite){
                     if(hostDesc){
                         if(hostDesc.get || hostDesc.set){                          
                             delete hostComp[methodName];
@@ -162,13 +157,12 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
                             js.value(hostComp,
                                 methodName,
                                 thisDesc.value ? thisDesc.value.bind(this) : hostDesc.value.bind(hostComp), 
-                                thisDesc.value ? thisDesc.writable : hostDesc.writable,
-                                thisDesc.value ? thisDesc.enumerable : hostDesc.enumerable);
+                                thisDesc.writable || hostDesc.writable,
+                                thisDesc.enumerable || hostDesc.enumerable);
                             
                         }else{                            
                             // If method is a normal attribute of host's class but you want to convert it to be a get/set method.                            
                             if(thisDesc.get || thisDesc.set){                                
-                                // Object.defineProperty(firstParasite, originMethodName, hostDesc);
                                 js.getset(hostComp, 
                                     methodName, 
                                     thisDesc.get ? thisDesc.get.bind(this) : ()=>{
@@ -233,6 +227,8 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
             const desc:PropertyDescriptor = js.getPropertyDescriptor(target._$super, methodName);
             if(desc && desc.get){
                 return desc.get.call(target._$super)
+            }else if(desc && Object.prototype.hasOwnProperty.call(desc, 'value')){
+                return desc.value;
             }else{
                 return this.__getParasiteSuperMethod(target._$super, methodName);
             }
@@ -259,16 +255,15 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         }else{
             const desc:PropertyDescriptor = js.getPropertyDescriptor(target._$super, methodName)
             if(desc && desc.set){
-                // target._$super[methodName] = value;
                 desc.set.call(target._$super, value)
                 return true;
-            }else if(desc && Object.prototype.hasOwnProperty.call(target._$super, methodName)){
+            }else if(desc && Object.prototype.hasOwnProperty.call(desc, 'value')){
                 target._$super[methodName] = value;
                 return true;
             }else{
                 return this.__setParasiteSuperMethod(target._$super, methodName, value);
             }
-        }     
+        }
     }
 
     
