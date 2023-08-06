@@ -50,6 +50,11 @@ export function override(target: Component, propertyKey: string, descriptor: Pro
     
 }
 
+const excuteHierarchyOverridding = Symbol();
+const initSuper = Symbol();
+const getParasiteSuperMethod = Symbol();
+const setParasiteSuperMethod = Symbol();
+const getOriginMethodName = Symbol();
 
 @ccclass('ParasiteComponent')
 export default abstract class ParasiteComponent<SuperComponent=Component> extends Component {
@@ -73,8 +78,8 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
     constructor() {        
         super();
         this.onLoad = ((previousOnLoad:Function)=> ()=>{
-            this.__excuteHierarchyOverridding();
-            this.__initSuper();
+            this[excuteHierarchyOverridding]();
+            this[initSuper]();
             return previousOnLoad ? previousOnLoad.call(this) : null;
         })(this.onLoad);
 
@@ -83,7 +88,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
             if(this._$host){
                 const listOfOverrideMethods:Set<string> = this[OVERRIDE_METHOD_MAP];
                 listOfOverrideMethods && listOfOverrideMethods.forEach((methodName:string)=>{
-                    const originMethodName:string = this.__getOriginMethodName(methodName);
+                    const originMethodName:string = this[getOriginMethodName](methodName);
                     const originDesc:PropertyDescriptor = js.getPropertyDescriptor(this, originMethodName);
                     if(originDesc){
                         Object.defineProperty(this._$host, methodName, originDesc);
@@ -100,7 +105,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
     /**
      * 
      */
-    private __excuteHierarchyOverridding(){ 
+    [excuteHierarchyOverridding](){ 
         // const allNodeComponents:Component[] = this.node.getComponents(Component);
         const allNodeComponents:ReadonlyArray<Component> = this.node.components;
         const numberOfComponent:number = allNodeComponents.length;
@@ -134,7 +139,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         if(this._$super){
             const listOfOverrideMethods:Set<string> = this[OVERRIDE_METHOD_MAP];
             listOfOverrideMethods && listOfOverrideMethods.forEach((methodName:string)=>{
-                const originMethodName:string = this.__getOriginMethodName(methodName);
+                const originMethodName:string = this[getOriginMethodName](methodName);
                 const thisDesc:PropertyDescriptor = js.getPropertyDescriptor(this, methodName);
                 const hostDesc:PropertyDescriptor = js.getPropertyDescriptor(hostComp, methodName);
                 //
@@ -191,12 +196,12 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
     /**
      * 
      */
-    private __initSuper(){
+    [initSuper](){
         if(this._$super){
             const superProxy:ProxyConstructor = new Proxy(this, {  
-                get: (target:any, prop:string) => this.__getParasiteSuperMethod(target, prop),           
+                get: (target:any, prop:string) => this[getParasiteSuperMethod](target, prop),           
                 set: (target:any, prop:string, value:any) =>{                    
-                    return this.__setParasiteSuperMethod(target, prop, value)
+                    return this[setParasiteSuperMethod](target, prop, value)
                 }
             });
             if(this.super){ delete this.super;};
@@ -213,11 +218,11 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
      * @param methodName 
      * @returns 
      */
-    private __getParasiteSuperMethod(target:any, methodName:string):Function{
+    [getParasiteSuperMethod](target:any, methodName:string):Function{
         if(!target || !target._$super){
             return undefined;
         }
-        const originMethodName:string = this.__getOriginMethodName(methodName);
+        const originMethodName:string = this[getOriginMethodName](methodName);
         const thisDesc:PropertyDescriptor = js.getPropertyDescriptor(target, originMethodName);
         if(thisDesc && thisDesc.get){
             return thisDesc.get.call(target._$super)
@@ -230,7 +235,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
             }else if(desc && Object.prototype.hasOwnProperty.call(desc, 'value')){
                 return desc.value;
             }else{
-                return this.__getParasiteSuperMethod(target._$super, methodName);
+                return this[getParasiteSuperMethod](target._$super, methodName);
             }
         }
         // 
@@ -243,11 +248,11 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
      * @param value 
      * @returns 
      */
-    private __setParasiteSuperMethod(target:any, methodName:string, value:any = undefined):boolean{
+    [setParasiteSuperMethod](target:any, methodName:string, value:any = undefined):boolean{
         if(!target || !target._$super){
             return false
         }
-        const originMethodName:string = this.__getOriginMethodName(methodName);
+        const originMethodName:string = this[getOriginMethodName](methodName);
         const thisDesc:PropertyDescriptor = js.getPropertyDescriptor(target, originMethodName)
         if(thisDesc && thisDesc.set){
             thisDesc.set.call(target._$super, value)
@@ -261,7 +266,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
                 target._$super[methodName] = value;
                 return true;
             }else{
-                return this.__setParasiteSuperMethod(target._$super, methodName, value);
+                return this[setParasiteSuperMethod](target._$super, methodName, value);
             }
         }
     }
@@ -272,10 +277,9 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
      * @param methodName 
      * @returns 
      */
-    private __getOriginMethodName(methodName:string):string{
+    [getOriginMethodName](methodName:string):string{
         return '__$super::'+ methodName + '__';
     }
     
 
 }
-
