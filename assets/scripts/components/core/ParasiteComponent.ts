@@ -11,7 +11,7 @@
  * Author by hallopatidu@gmail.com
  */
 
-import { error } from "cc";
+import { error, warn } from "cc";
 import { _decorator } from "cc";
 import { log } from "cc";
 import { js } from "cc";
@@ -20,7 +20,13 @@ import { DEV } from "cc/env";
 
 const { ccclass, property } = _decorator;
 
-const OVERRIDE_METHOD_MAP:string = '__$OverrideMethodMap__';
+// const OVERRIDE_METHOD_MAP:string = '__$OverrideMethodMap__';
+const OVERRIDE_METHOD_MAP = Symbol();
+const excuteHierarchyOverridding = Symbol();
+const initSuper = Symbol();
+const getParasiteSuperMethod = Symbol();
+const setParasiteSuperMethod = Symbol();
+const getOriginMethodName = Symbol();
 
 /**
  * Can add override method for this method.
@@ -50,11 +56,7 @@ export function override(target: Component, propertyKey: string, descriptor: Pro
     
 }
 
-const excuteHierarchyOverridding = Symbol();
-const initSuper = Symbol();
-const getParasiteSuperMethod = Symbol();
-const setParasiteSuperMethod = Symbol();
-const getOriginMethodName = Symbol();
+
 
 @ccclass('ParasiteComponent')
 export default abstract class ParasiteComponent<SuperComponent=Component> extends Component {
@@ -106,7 +108,6 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
      * 
      */
     [excuteHierarchyOverridding](){ 
-        // const allNodeComponents:Component[] = this.node.getComponents(Component);
         const allNodeComponents:ReadonlyArray<Component> = this.node.components;
         const numberOfComponent:number = allNodeComponents.length;
         let hostComp:Component = null;
@@ -114,14 +115,12 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         let isFinalParasite:boolean = false;
         const behindCompIndex:number = allNodeComponents.findIndex((component:Component, index:number, allComponents:Component[])=>{
             const componentIsParasite:boolean = js.isChildClassOf(component.constructor, ParasiteComponent);
-            hostComp = componentIsParasite ? hostComp : component;            
-            // firstParasite = index - 1 >= 0 && !cc.js.isChildClassOf(allComponents[index-1].constructor, ParasiteComponent) ? component : firstParasite;
+            hostComp = componentIsParasite ? hostComp : component;
             let nextComp:Component = null;
             if(index < numberOfComponent - 1){
                 nextComp = allComponents[index+1];
                 firstParasite = nextComp && !componentIsParasite ? nextComp : firstParasite;
             }
-            // const nextComp:cc.Component = index < (numberOfComponent - 1) ? allComponents[index+1] : null;
             return nextComp && (nextComp == this) && !!component;
         })
         this._$id = behindCompIndex + 1;
@@ -139,16 +138,15 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         if(this._$super){
             const listOfOverrideMethods:Set<string> = this[OVERRIDE_METHOD_MAP];
             listOfOverrideMethods && listOfOverrideMethods.forEach((methodName:string)=>{
-                const originMethodName:string = this[getOriginMethodName](methodName);
-                const thisDesc:PropertyDescriptor = js.getPropertyDescriptor(this, methodName);
                 const hostDesc:PropertyDescriptor = js.getPropertyDescriptor(hostComp, methodName);
-                //
-                if(firstParasite && hostDesc && !Object.prototype.hasOwnProperty.call(firstParasite, originMethodName)){                    
-                    Object.defineProperty(firstParasite, originMethodName, hostDesc);
-                }
-                // 
-                if(thisDesc && firstParasite){
-                    if(hostDesc){
+                if(hostDesc){
+                    const originMethodName:string = this[getOriginMethodName](methodName);
+                    const thisDesc:PropertyDescriptor = js.getPropertyDescriptor(this, methodName);
+                    if(firstParasite && !Object.prototype.hasOwnProperty.call(firstParasite, originMethodName)){                    
+                        Object.defineProperty(firstParasite, originMethodName, hostDesc);
+                    }
+                    // 
+                    if(thisDesc && firstParasite){                        
                         if(hostDesc.get || hostDesc.set){                          
                             delete hostComp[methodName];
                             js.getset(hostComp, 
@@ -179,12 +177,13 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
                                     thisDesc.enumerable,
                                     thisDesc.configurable)
                             }
-                        }
-                    }
+                        }                        
 
-                }           
-                else{
-                    delete this[originMethodName];
+                    }else{
+                        delete this[originMethodName];
+                    }
+                }else{
+                    warn('The method ' + methodName + ' do not exist in the Host Component.');
                 }
                 // 
             })
