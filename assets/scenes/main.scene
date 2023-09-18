@@ -179,7 +179,7 @@
     "_priority": 0,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 463.99999999999994,
+    "_orthoHeight": 464,
     "_near": 0,
     "_far": 1000,
     "_color": {
@@ -333,7 +333,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "_id": "52znx9CERFSY0yRsHidEKJ"
+    "_id": "ccySEdgFtC8IoANZSAQ/FB"
   },
   {
     "__type__": "cc.Node",
@@ -483,7 +483,7 @@
     "_string": "NEXT",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 20.301724137931036,
+    "_actualFontSize": 20,
     "_fontSize": 20,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
