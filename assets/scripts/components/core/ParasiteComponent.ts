@@ -8,20 +8,23 @@
  * - All of methods are create by ParasiteComponent would be merged to the first component in the Inheritance Chain.
  * - Just using in the same node with super class
  * - Using with override decorator.
+ * 
+ * Note: If you understand How and Why this component work in the first time reading. Congratulation ! You are really a tallent developer.
  * Author by hallopatidu@gmail.com
  */
 
 import { error, warn } from "cc";
 import { _decorator } from "cc";
-import { log } from "cc";
 import { js } from "cc";
 import { Component } from "cc";
 import { DEV } from "cc/env";
 
 const { ccclass, property } = _decorator;
 
-// const OVERRIDE_METHOD_MAP:string = '__$OverrideMethodMap__';
+const PARASITE_TEST_MODE:boolean = false && DEV;
+
 const OverrideMethodNameMap = Symbol();
+const CheckEligibleForInheritance = Symbol();
 const ExcuteHierarchyOverridding = Symbol();
 const InitSuper = Symbol();
 const GetParasiteSuperMethod = Symbol();
@@ -81,52 +84,98 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         super();
         this.__preload = ((previousOnLoad:Function)=> ()=>{
             this[ExcuteHierarchyOverridding]();
-            this[InitSuper]();
+            this[InitSuper]();            
             return previousOnLoad ? previousOnLoad.call(this) : null;
         })(this.__preload);
 
         this.onDestroy = ((previousDestroy:Function)=>function(){
-            previousDestroy ? previousDestroy.call(this) : null;
+            previousDestroy ? previousDestroy.call(this) : null;            
+            this.enabled = false;
             const allParasiteComponents:ParasiteComponent[] = this.node.getComponents(ParasiteComponent);
-            allParasiteComponents.forEach((parasiteComp:ParasiteComponent)=>parasiteComp[ExcuteHierarchyOverridding]());
+            allParasiteComponents.forEach((parasiteComp:ParasiteComponent)=> parasiteComp !== this && parasiteComp[ExcuteHierarchyOverridding]());        
             this._$super = null;
             if(this.super){ delete this.super;};
         })(this.onDestroy)
+
+        // this.onEnable = ((previousOnEnable:Function)=>function(){
+        //     previousOnEnable ? previousOnEnable.call(this) : undefined;
+        //     DEV && log('--> enabled ' + js.getClassName(this) )
+        //     if(this.node && !this._$super){                
+        //         const allParasiteComponents:ParasiteComponent[] = this.node.getComponents(ParasiteComponent);
+        //         allParasiteComponents.forEach((parasiteComp:ParasiteComponent)=> parasiteComp[ExcuteHierarchyOverridding]());
+        //     }
+        // })(this.onEnable);
+
+        // this.onDisable= ((previousOnDisable:Function)=>function(){
+        //     previousOnDisable ? previousOnDisable.call(this) : undefined;
+        //     DEV && log('--> disabled ' + js.getClassName(this) )
+        //     if(this.node && !this._$super){                         
+        //         const allParasiteComponents:ParasiteComponent[] = this.node.getComponents(ParasiteComponent);
+        //         allParasiteComponents.forEach((parasiteComp:ParasiteComponent)=> parasiteComp[ExcuteHierarchyOverridding]());
+        //     }
+        // })(this.onEnable);
     }
 
-    // __preload(){
-    //     log('___________PRe load________' + this.node.name)
-    // }
+    /**
+     * 
+     * @param component 
+     * @returns 
+     */
+    [CheckEligibleForInheritance](component:Component):boolean{
+        return Boolean(!!component && component.enabled)
+    }
 
     /**
      * 
      */
     [ExcuteHierarchyOverridding](){ 
+        if(!this.enabled) return;
         const allNodeComponents:ReadonlyArray<Component> = this.node.components;
         const numberOfComponent:number = allNodeComponents.length;
         let hostComp:Component = null;
         let firstParasite:Component = null;
-        let isFinalParasite:boolean = false;
-        const behindCompIndex:number = allNodeComponents.findIndex((component:Component, index:number, allComponents:Component[])=>{
-            const componentIsParasite:boolean = js.isChildClassOf(component.constructor, ParasiteComponent);
-            hostComp = componentIsParasite ? hostComp : component;
-            let nextComp:Component = null;
-            if(index < numberOfComponent - 1){
-                nextComp = allComponents[index+1];
-                firstParasite = nextComp && !componentIsParasite ? nextComp : firstParasite;
+        
+        const previousCompIndex:number = allNodeComponents.findIndex((component:Component, index:number, allComponents:Component[])=>{
+            const eligibleForInheritance:boolean = this[CheckEligibleForInheritance](component)          
+            let investigateComp:Component = null;
+            if(eligibleForInheritance){
+                const componentIsParasite:boolean = js.isChildClassOf(component.constructor, ParasiteComponent);
+                hostComp = componentIsParasite ? hostComp : component;                
+                let enabledIndex:number = index;
+                // Search enabled nextComp
+                while(enabledIndex < numberOfComponent - 1){
+                    investigateComp = allComponents[++enabledIndex];
+                    if(this[CheckEligibleForInheritance](investigateComp)){                    
+                        break;
+                    }else{
+                        continue;
+                    }
+                }
+                firstParasite = investigateComp && !componentIsParasite ? investigateComp : firstParasite;
             }
-            return nextComp && (nextComp == this) && !!component;
+            // Old code.
+            // if(index < numberOfComponent - 1){
+            //     nextComp = allComponents[index+1];                
+            //     nextComp = nextComp.enabled ? nextComp : null;
+            //     // update firstParasite
+            //     firstParasite = nextComp && !componentIsParasite ? nextComp : firstParasite;
+            // }
+            // 
+            return eligibleForInheritance && investigateComp && (investigateComp == this);
         })
-        this._$id = behindCompIndex + 1;
-        const behindComp:Component = allNodeComponents[behindCompIndex];
-        if(behindComp){
-            this._$super = behindComp;
-            this._$superName = js.getClassName(behindComp);
-            const adjacentComp:Component = behindCompIndex < numberOfComponent - 2 ? allNodeComponents[behindCompIndex + 2] : null;
-            if(!adjacentComp || (adjacentComp && !js.isChildClassOf(adjacentComp.constructor, ParasiteComponent))){
-                // the last Parasite Component.       
-                isFinalParasite = true;
-            }
+        // 
+        this._$id = previousCompIndex + 1;
+        const previousComponent:Component = allNodeComponents[previousCompIndex];
+        if(previousComponent){
+            this._$super = previousComponent;
+            this._$superName = js.getClassName(previousComponent);
+            // Find a final Parasite Component. Do not need at this time.
+            // let isFinalParasite:boolean = false;
+            // const nextComponent:Component = previousCompIndex < numberOfComponent - 2 ? allNodeComponents[previousCompIndex + 2] : null;
+            // if(!nextComponent || (nextComponent && !js.isChildClassOf(nextComponent.constructor, ParasiteComponent))){
+            //     // the last Parasite Component.       
+            //     isFinalParasite = true;
+            // }
         }
         // 
         if(this._$super){
@@ -178,7 +227,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
                         delete this[originMethodName];
                     }
                 }else{
-                    warn('The method ' + methodName + ' do not exist in the Host Component.');
+                    PARASITE_TEST_MODE && warn('The method ' + methodName + ' do not exist in the Host: ' + js.getClassName(hostComp));
                 }
                 // 
             })
@@ -254,7 +303,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         }else{
             const desc:PropertyDescriptor = js.getPropertyDescriptor(target._$super, methodName)
             if(desc && desc.set){
-                desc.set.call(target._$super, value)
+                desc.set.call(target._$super, value);
                 return true;
             }else if(desc && Object.prototype.hasOwnProperty.call(desc, 'value')){
                 target._$super[methodName] = value;
