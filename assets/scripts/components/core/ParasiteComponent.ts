@@ -166,42 +166,44 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         if(this._$super){
             const listOfOverrideMethods:Set<string> = this[OverrideMethodNameMap];
             listOfOverrideMethods && listOfOverrideMethods.forEach((methodName:string)=>{
-                const hostDesc:PropertyDescriptor = js.getPropertyDescriptor(hostComp, methodName);
+                const firstParasiteOfMethod:Component = firstParasite;
+                const hostOfMethod:Component = hostComp;
+                const hostDesc:PropertyDescriptor = js.getPropertyDescriptor(hostOfMethod, methodName);
                 if(hostDesc){
                     const originMethodName:string = this[GetOriginMethodName](methodName);
-                    const thisDesc:PropertyDescriptor = js.getPropertyDescriptor(this, methodName);
-                    if(firstParasite && !Object.prototype.hasOwnProperty.call(firstParasite, originMethodName)){    
+                    const thisDesc:PropertyDescriptor = js.getPropertyDescriptor(this, methodName);                    
+                    if(firstParasiteOfMethod && !Object.prototype.hasOwnProperty.call(firstParasiteOfMethod, originMethodName)){    
                         // the frist parasite saved all origin method.                
-                        Object.defineProperty(firstParasite, originMethodName, hostDesc);
+                        Object.defineProperty(firstParasiteOfMethod, originMethodName, hostDesc);
                     }
                     // 
-                    if(thisDesc && firstParasite){                        
+                    if(thisDesc && firstParasiteOfMethod){                        
                         if(hostDesc.get || hostDesc.set){                          
-                            delete hostComp[methodName];
-                            js.getset(hostComp, 
+                            delete hostOfMethod[methodName];
+                            js.getset(hostOfMethod, 
                                 methodName, 
-                                thisDesc.get ? thisDesc.get.bind(this) : hostDesc.get.bind(hostComp), 
-                                thisDesc.set ? thisDesc.set.bind(this) : hostDesc.set.bind(hostComp),
+                                thisDesc.get ? thisDesc.get.bind(this) : hostDesc.get.bind(hostOfMethod), 
+                                thisDesc.set ? thisDesc.set.bind(this) : hostDesc.set.bind(hostOfMethod),
                                 thisDesc.enumerable, 
                                 thisDesc.configurable);
 
                         }else if(hostDesc.value !== undefined && typeof hostDesc.value == 'function'){
-                            js.value(hostComp,
+                            js.value(hostOfMethod,
                                 methodName,
-                                thisDesc.value ? thisDesc.value.bind(this) : hostDesc.value.bind(hostComp), 
+                                thisDesc.value ? thisDesc.value.bind(this) : hostDesc.value.bind(hostOfMethod), 
                                 thisDesc.writable || hostDesc.writable,
                                 thisDesc.enumerable || hostDesc.enumerable);
                             
                         }else{                            
                             // If method is a normal attribute of host's class but you want to convert it to be a get/set method.                            
                             if(thisDesc.get || thisDesc.set){                                
-                                js.getset(hostComp, 
+                                js.getset(hostOfMethod, 
                                     methodName, 
                                     thisDesc.get ? thisDesc.get.bind(this) : ()=>{
-                                        return firstParasite[originMethodName]
+                                        return firstParasiteOfMethod[originMethodName]
                                     } ,         
                                     thisDesc.set ? thisDesc.set.bind(this): (value:any)=>{
-                                        firstParasite[originMethodName] = value
+                                        firstParasiteOfMethod[originMethodName] = value
                                     }, 
                                     thisDesc.enumerable,
                                     thisDesc.configurable)
@@ -212,7 +214,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
                         delete this[originMethodName];
                     }
                 }else{
-                    PARASITE_TEST_MODE && warn('The method ' + methodName + ' do not exist in the Host: ' + js.getClassName(hostComp));
+                    PARASITE_TEST_MODE && warn('The method ' + methodName + ' do not exist in the Host: ' + js.getClassName(hostOfMethod));
                 }
                 // 
             })
