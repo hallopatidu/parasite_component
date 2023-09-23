@@ -134,7 +134,7 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         const numberOfComponent:number = allNodeComponents.length;
         let hostComp:Component = null;
         let firstParasite:Component = null;
-        
+        // Investigate parasite component. Purpose to find out the previous component which would be become a super of this component.
         const previousCompIndex:number = allNodeComponents.findIndex((component:Component, index:number, allComponents:Component[])=>{
             const eligibleForInheritance:boolean = this[CheckEligibleForInheritance](component)          
             let investigateComp:Component = null;
@@ -153,14 +153,6 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
                 }
                 firstParasite = investigateComp && !componentIsParasite ? investigateComp : firstParasite;
             }
-            // Old code.
-            // if(index < numberOfComponent - 1){
-            //     nextComp = allComponents[index+1];                
-            //     nextComp = nextComp.enabled ? nextComp : null;
-            //     // update firstParasite
-            //     firstParasite = nextComp && !componentIsParasite ? nextComp : firstParasite;
-            // }
-            // 
             return eligibleForInheritance && investigateComp && (investigateComp == this);
         })
         // 
@@ -169,13 +161,6 @@ export default abstract class ParasiteComponent<SuperComponent=Component> extend
         if(previousComponent){
             this._$super = previousComponent;
             this._$superName = js.getClassName(previousComponent);
-            // Find a final Parasite Component. Do not need at this time.
-            // let isFinalParasite:boolean = false;
-            // const nextComponent:Component = previousCompIndex < numberOfComponent - 2 ? allNodeComponents[previousCompIndex + 2] : null;
-            // if(!nextComponent || (nextComponent && !js.isChildClassOf(nextComponent.constructor, ParasiteComponent))){
-            //     // the last Parasite Component.       
-            //     isFinalParasite = true;
-            // }
         }
         // 
         if(this._$super){
